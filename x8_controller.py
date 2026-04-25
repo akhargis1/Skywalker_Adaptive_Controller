@@ -117,9 +117,25 @@ def elevon_mixer(tau:      np.ndarray,
     delta_sym  = tau[1] / eff_pitch
 
     lim = math.radians(params.elevon_limit_deg)
-    delta_L = float(np.clip(delta_sym + delta_diff, -lim, lim))
-    delta_R = float(np.clip(delta_sym - delta_diff, -lim, lim))
-    return delta_L, delta_R
+    #delta_L = float(np.clip(delta_sym + delta_diff, -lim, lim))
+    #delta_R = float(np.clip(delta_sym - delta_diff, -lim, lim))
+    #return delta_L, delta_R
+
+    
+    # Compute raw
+    delta_L = delta_sym + delta_diff
+    delta_R = delta_sym - delta_diff
+    
+    # Find max usage
+    max_mag = max(abs(delta_L), abs(delta_R))
+    
+    # If exceeding limits → scale BOTH
+    if max_mag > lim:
+        scale = lim / max_mag
+        delta_L *= scale
+        delta_R *= scale
+    
+    return float(delta_L), float(delta_R)
 
 
 class ReferenceModel:
