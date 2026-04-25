@@ -222,3 +222,55 @@ def send_rc_override(conn,
         int(1000 + throttle_pct * 10),  # Ch3 throttle
         65535, 65535, 65535, 65535, 65535,
     )
+
+
+def send_elevon_direct(conn,
+                       delta_L_rad:      float,
+                       delta_R_rad:      float,
+                       throttle_pct:     float = 60.0,
+                       elevon_limit_deg: float = 30.0):
+    """
+    Send direct elevon commands via RC override.
+
+    Verified channel mapping from hardware test:
+        Ch1 = SERVO1 = left elevon   (SERVO1_FUNCTION=77)
+        Ch2 = SERVO2 = right elevon  (SERVO2_FUNCTION=78)
+
+    PWM range [1100, 1900] matching SDF servo_min/servo_max.
+    Right elevon negated to correct for mirrored hinge axis.
+
+    delta_L_rad, delta_R_rad:  signed deflection in radians
+        positive = trailing edge up
+        negative = trailing edge down
+    """
+    def to_pwm(rad: float) -> int:
+        pct = max(-1.0, min(1.0, math.degrees(rad) / elevon_limit_deg))
+        return int(1500 + pct * 400)   # 400 → maps to [1100, 1900]
+
+
+    def set_servo_pwm(servo_n, pwm):
+        """
+        Directly sets a PWM value to a specific output pin.
+        servo_n: 1 for SERVO1, 2 for SERVO2, etc.
+        pwm: 1000 to 2000 (1500 is neutral)
+        """
+        conn.mav.command_long_send(
+            conn.target_system,
+            conn.target_component,
+            mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
+            0,            # Confirmation
+            servo_n,      # Instance (Servo Number)
+            pwm,          # PWM Value
+            0, 0, 0, 0, 0 # Unused parameters
+        )
+
+    #conn.mav.rc_channels_override_send(
+    #    conn.target_system, conn.target_component,
+    #    to_pwm(delta_L_rad),            # Ch1 = left elevon
+    #    to_pwm(-delta_R_rad),           # Ch2 = right elevon (negated — mirrored hinge)
+    #    int(1000 + throttle_pct * 10),  # Ch3 = throttle
+    #    65535, 65535, 65535, 65535, 65535,
+    #)
+    
+    set_servo_pwm(1, to_pwm(delta_L_rad))
+    set_servo_pwm(2, to_pwm(delta_L_rad))
