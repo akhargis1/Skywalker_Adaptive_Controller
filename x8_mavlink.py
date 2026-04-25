@@ -205,7 +205,7 @@ def send_rc_override(conn,
                      delta_L_rad: float,
                      delta_R_rad: float,
                      throttle_pct: float = 60.0,
-                     elevon_limit_deg: float = 25.0):
+                     elevon_limit_deg: float = 30.0):
     """
     Alternative output: override RC channels directly.
     X8 default ArduPilot mixer: Ch1 = right elevon, Ch2 = left elevon.
@@ -213,7 +213,7 @@ def send_rc_override(conn,
     """
     def to_pwm(rad: float) -> int:
         pct = max(-1.0, min(1.0, math.degrees(rad) / elevon_limit_deg))
-        return int(1500 + pct * 500)
+        return int(1500 + pct * 400)
 
     conn.mav.rc_channels_override_send(
         conn.target_system, conn.target_component,
