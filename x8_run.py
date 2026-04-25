@@ -53,7 +53,7 @@ def parse_args():
     p.add_argument('--verbose', action='store_true')
     return p.parse_args()
     
-def toggle_research_mode(self, active=True):
+def toggle_research_mode(active=True):
         """Switches SERVO_FUNCTION between 1 (PassThru) and 77/78 (Elevon)"""
         val_l = 1 if active else 77
         val_r = 1 if active else 78
