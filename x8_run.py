@@ -92,7 +92,7 @@ def main():
 
     while True:
         state0 = buf.read()
-        if state0.valid and not math.isnan(state0.phi) and state0.phi != 0.0:
+        if state0.valid:
             break
             
         time.sleep(0.02)
