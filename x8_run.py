@@ -90,13 +90,8 @@ def main():
     ctrl     = X8Controller(params, gains)
     ctrl.dt  = dt
 
-    while True:
-        state0 = buf.read()
-        if state0.valid:
-            break
-            
-        time.sleep(0.02)
-    ctrl.reset(np.array([state0.phi, state0.theta, state0.psi]))
+
+
 
     seq      = TestSequencer(kind=args.test)
     seq.start()
@@ -108,9 +103,16 @@ def main():
         set_mode(conn, 0)   # 0 = MANUAL on ArduPlane
         toggle_research_mode(conn, active=True)
         time.sleep(1)
-
+        
+    for _ in range(5):
+        buf.read()
+        time.sleep(0.02)
+    
+    state0 = buf.read()
+    ctrl.reset(np.array([state0.phi, state0.theta, state0.psi]))
+    
     print(f"[RUN] {args.test} sequence at {args.hz:.0f} Hz.  Ctrl-C to stop.\n")
-
+    
     tick   = 0
     t_next = time.monotonic()
 
@@ -128,6 +130,9 @@ def main():
                 continue
 
             q_att = np.array([state.phi, state.theta, state.psi])
+            if np.any(np.isnan(q_att)) or np.any(np.abs(q_att) > 2*np.pi):
+                print("[WARN] Implausible attitude, skipping tick")
+                continue
             dq    = np.array([state.p,   state.q,     state.r])
             q_cmd = seq.get_command(state)
 
