@@ -277,13 +277,14 @@ def send_elevon_direct(conn,
             0, 0, 0, 0, 0 # Unused parameters
         )
 
-    #conn.mav.rc_channels_override_send(
-    #    conn.target_system, conn.target_component,
-    #    to_pwm(delta_L_rad),            # Ch1 = left elevon
-    #    to_pwm(-delta_R_rad),           # Ch2 = right elevon (negated — mirrored hinge)
-    #    int(1000 + throttle_pct * 10),  # Ch3 = throttle
-    #    65535, 65535, 65535, 65535, 65535,
-    #)
+    conn.mav.rc_channels_override_send(
+        conn.target_system, conn.target_component,
+        65535, 65535,
+        int(1000 + throttle_pct * 10),  # Ch3 = throttle
+        65535, 65535, 65535,
+    )
     
     set_servo_pwm(1, to_pwm(delta_L_rad))
     set_servo_pwm(2, to_pwm(delta_R_rad))
+
+    
