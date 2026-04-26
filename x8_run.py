@@ -90,7 +90,12 @@ def main():
     ctrl     = X8Controller(params, gains)
     ctrl.dt  = dt
 
-    state0   = buf.read()
+    while True:
+    state0 = buf.read()
+    if state0.valid and not math.isnan(state0.phi) and state0.phi != 0.0:
+        break
+        
+    time.sleep(0.02)
     ctrl.reset(np.array([state0.phi, state0.theta, state0.psi]))
 
     seq      = TestSequencer(kind=args.test)
