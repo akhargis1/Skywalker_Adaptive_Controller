@@ -304,7 +304,7 @@ def send_elevon_direct(conn,
         conn.target_system, conn.target_component,
         65535, 65535,
         int(1000 + throttle_pct * 10),  # Ch3 = throttle
-        65535, 65535, 65535,
+        65535, 65535, 65535, 65535, 65535
     )
     
     set_servo_pwm(1, to_pwm(delta_L_rad))
