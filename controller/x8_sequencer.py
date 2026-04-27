@@ -55,17 +55,17 @@ class TestSequencer:
 
         if self.kind == 'doublet':
             # ±20° roll doublet — standard step response
-            if   t < 2.0:  phi_d = 0.0
-            elif t < 4.0:  phi_d = r(20)
-            elif t < 6.0:  phi_d = r(-20)
+            if   t < 10.0:  phi_d = 0.0
+            elif t < 25.0:  phi_d = r(20)
+            elif t < 40.0:  phi_d = r(-20)
             else:           phi_d = 0.0
             return np.array([phi_d, self.trim_theta, state.psi])
 
         elif self.kind == 'pitch_doublet':
             # ±8° pitch doublet
-            if   t < 2.0:  th_d = self.trim_theta
-            elif t < 4.5:  th_d = self.trim_theta + r(8)
-            elif t < 7.0:  th_d = self.trim_theta - r(4)
+            if   t < 10.0:  th_d = self.trim_theta
+            elif t < 25.0:  th_d = self.trim_theta + r(8)
+            elif t < 40.0:  th_d = self.trim_theta - r(4)
             else:           th_d = self.trim_theta
             return np.array([0.0, th_d, state.psi])
 
