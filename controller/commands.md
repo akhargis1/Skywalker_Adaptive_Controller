@@ -20,8 +20,8 @@ Particular Connection:
 Terminal 1 (within ~/ardupilot/Tools/autotest):  
 ```./sim_vehicle.py -v ArduPlane --model JSON --add-param-file=$HOME/SITL_Models/Gazebo/config/skywalker_x8.param --console --map```
 
-Terminal 2:  
-```gz sim -r skywalker_x8.sdf ```         
+Terminal 2:         
+```gz sim -v4 -r skywalker_x8_runway.sdf```
 
 Terminal 3:  
 ```python3 x8_run.py```
