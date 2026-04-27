@@ -101,6 +101,16 @@ def main():
         print("[MODE] Switching to MANUAL ...")
         set_mode(conn, 0)   # 0 = MANUAL on ArduPlane
         toggle_research_mode(conn, active=True)
+        trim_pwm = int(1500 + (6.0 / 30.0) * 400)   # = 1580
+        for _ in range(40):   # 40 × 0.02s = 0.8s
+            send_elevon_direct(conn,
+                               delta_L_rad=ctrl.trim_delta_sym,
+                               delta_R_rad=ctrl.trim_delta_sym,
+                               throttle_pct=60.0,
+                               elevon_limit_deg=params.elevon_limit_deg)
+            time.sleep(0.02)
+
+        
         time.sleep(1)
         
     for _ in range(5):
