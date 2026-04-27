@@ -36,6 +36,7 @@ class TestSequencer:
         if kind not in self.SEQUENCES:
             raise ValueError(f"Unknown sequence '{kind}'. Choose: {self.SEQUENCES}")
         self.kind = kind
+        self.trim_theta = trim_theta_rad
         self._t0: Optional[float] = None
 
     def start(self):
@@ -58,14 +59,14 @@ class TestSequencer:
             elif t < 4.0:  phi_d = r(20)
             elif t < 6.0:  phi_d = r(-20)
             else:           phi_d = 0.0
-            return np.array([phi_d, r(2), state.psi])
+            return np.array([phi_d, self.trim_theta, state.psi])
 
         elif self.kind == 'pitch_doublet':
             # ±8° pitch doublet
-            if   t < 2.0:  th_d = r(2)
-            elif t < 4.5:  th_d = r(10)
-            elif t < 7.0:  th_d = r(-4)
-            else:           th_d = r(2)
+            if   t < 2.0:  th_d = self.trim_theta
+            elif t < 4.5:  th_d = self.trim_theta + r(8)
+            elif t < 7.0:  th_d = self.trim_theta - r(4)
+            else:           th_d = self.trim_theta
             return np.array([0.0, th_d, state.psi])
 
         elif self.kind == 'chirp':
@@ -75,10 +76,10 @@ class TestSequencer:
             T        = 30.0
             f        = f0 + (f1 - f0) * min(t / T, 1.0)
             phi_d    = A * math.sin(2 * math.pi * f * t)
-            return np.array([phi_d, r(2), state.psi])
+            return np.array([phi_d, self.trim_theta, state.psi])
 
         else:  # cruise
-            return np.array([0.0, r(2), state.psi])
+            return np.array([0.0, self.trim_theta, state.psi])
 
 
     # need to add a lawnmower pattern here
