@@ -90,6 +90,8 @@ def main():
     ctrl     = X8Controller(params, gains)
     ctrl.dt  = dt
 
+    def pwm_to_rad(pwm, limit_deg=30.0):
+        return math.radians((pwm - 1500) / 400.0 * limit_deg)
 
     ctrl.trim_delta_sym = pwm_to_rad(1580)
     trim_theta = 0.10 
