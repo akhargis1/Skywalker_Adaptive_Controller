@@ -179,6 +179,7 @@ class X8Controller:
         self.theta_hat = self.p.theta_nominal.copy()
         self.refmod    = ReferenceModel(self.g.omega_n, self.g.zeta)
 
+        self.trim_delta_sym = 0.0   # rad, set before first tick 
         self._prev_e   = np.zeros(3)
         self._ready    = False
 
@@ -228,8 +229,11 @@ class X8Controller:
         tau    = tau_ff + tau_sw
 
         # 7. Elevon mixer
-        delta_L, delta_R = elevon_mixer(tau, airspeed, p)
-
+        delta_L, delta_R = elevon_mixer(tau, airspeed, p)        
+        lim = math.radians(p.elevon_limit_deg)
+        delta_L = float(np.clip(delta_L + self.trim_delta_sym, -lim, lim))
+        delta_R = float(np.clip(delta_R + self.trim_delta_sym, -lim, lim))
+                   
         # 8. Adaptation  (σ-modification + projection)
         dtheta         = -g.Gamma @ (Y.T @ s) - g.sigma * self.theta_hat
         self.theta_hat = self.theta_hat + dtheta * dt
