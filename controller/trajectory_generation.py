@@ -44,6 +44,7 @@ class TrajectoryPoint:
     z_ref:       float  # Down (m), = -altitude
     psi_ref:     float  # heading (rad), NED convention
     psi_dot_ref: float  # curvature feedforward (rad/s): signed V/R on turns, 0 on straights
+    v_ref:       float  # reference airspeed (m/s)
     segment:     str    # 'straight' | 'turn' | 'done'
 
 
@@ -80,22 +81,24 @@ class LawnmowerTrajectory:
     """
 
     def __init__(self,
-                 altitude:    float,
-                 airspeed:    float,
-                 leg_length:  float,
-                 turn_radius: float,
-                 num_legs:    int  = 4,
-                 loop:        bool = False):
+                 altitude:       float,
+                 airspeed:       float,
+                 leg_length:     float,
+                 turn_radius:    float,
+                 num_legs:       int   = 4,
+                 loop:           bool  = False,
+                 runway_length:  float = 0.0):
 
         if num_legs < 1:
             raise ValueError("num_legs must be >= 1")
 
-        self.altitude    = altitude
-        self.airspeed    = airspeed
-        self.leg_length  = leg_length
-        self.turn_radius = turn_radius
-        self.num_legs    = num_legs
-        self.loop        = loop
+        self.altitude       = altitude
+        self.airspeed       = airspeed
+        self.leg_length     = leg_length
+        self.turn_radius    = turn_radius
+        self.num_legs       = num_legs
+        self.loop           = loop
+        self.runway_length  = runway_length
 
         self._z_ref        = -altitude
         self._t_leg        = leg_length / airspeed
@@ -114,6 +117,21 @@ class LawnmowerTrajectory:
         t = 0.0
         x, y = 0.0, 0.0
 
+        if self.runway_length > 0.0:
+            t_run = self.runway_length / self.airspeed
+            self._t_starts.append(t)
+            self._segments.append({
+                'type':    'straight',
+                't_start': t,
+                't_end':   t + t_run,
+                'x0': x, 'y0': y,
+                'psi': 0.0,
+                'dx':  1.0,
+                'length': self.runway_length,
+            })
+            t += t_run
+            x += self.runway_length
+
         for leg_idx in range(self.num_legs):
             heading_north = (leg_idx % 2 == 0)
             psi = 0.0 if heading_north else math.pi
@@ -128,6 +146,7 @@ class LawnmowerTrajectory:
                 'x0': x, 'y0': y,
                 'psi': psi,
                 'dx':  dx,
+                'length': self.leg_length,
             })
             t += self._t_leg
             x += self.leg_length * dx
@@ -178,6 +197,7 @@ class LawnmowerTrajectory:
                         z_ref=self._z_ref,
                         psi_ref=last['psi'],
                         psi_dot_ref=0.0,
+                        v_ref=self.airspeed,
                         segment='done',
                     )
                 else:
@@ -187,6 +207,7 @@ class LawnmowerTrajectory:
                         z_ref=self._z_ref,
                         psi_ref=_wrap_to_pi(last['psi_start'] + last['sign'] * math.pi),
                         psi_dot_ref=0.0,
+                        v_ref=self.airspeed,
                         segment='done',
                     )
 
@@ -197,11 +218,12 @@ class LawnmowerTrajectory:
         if seg['type'] == 'straight':
             frac = dt / (seg['t_end'] - seg['t_start'])
             return TrajectoryPoint(
-                x_ref=seg['x0'] + frac * self.leg_length * seg['dx'],
+                x_ref=seg['x0'] + frac * seg['length'] * seg['dx'],
                 y_ref=seg['y0'],
                 z_ref=self._z_ref,
                 psi_ref=seg['psi'],
                 psi_dot_ref=0.0,
+                v_ref=self.airspeed,
                 segment='straight',
             )
 
@@ -218,6 +240,7 @@ class LawnmowerTrajectory:
                 z_ref=self._z_ref,
                 psi_ref=psi,
                 psi_dot_ref=sign * self._omega,
+                v_ref=self.airspeed,
                 segment='turn',
             )
 
@@ -283,7 +306,7 @@ class LawnmowerTrajectory:
         y0   = seg['y0']
         # Along-track distance from leg start (dot product with unit direction)
         s = (x - x0) * dx          # (y component contributes 0)
-        s = max(0.0, min(self.leg_length, s))
+        s = max(0.0, min(seg['length'], s))
         t_proj = seg['t_start'] + s / self.airspeed
         # Nearest point on segment
         cx = x0 + s * dx
@@ -346,10 +369,11 @@ def _wrap_to_pi(angle: float) -> float:
 # Standalone plot / CLI
 # ---------------------------------------------------------------------------
 
-def _plot(altitude, airspeed, leg_length, turn_radius, num_legs, loop=False, t_end=None):
+def _plot(altitude, airspeed, leg_length, turn_radius, num_legs, loop=False, t_end=None, runway_length=0.0):
     import matplotlib.pyplot as plt
 
-    traj = LawnmowerTrajectory(altitude, airspeed, leg_length, turn_radius, num_legs, loop=loop)
+    traj = LawnmowerTrajectory(altitude, airspeed, leg_length, turn_radius, num_legs,
+                               loop=loop, runway_length=runway_length)
     dt   = 0.05
     stop = t_end if t_end is not None else traj.total_time
     ts   = np.arange(0, stop + dt, dt)
@@ -400,10 +424,11 @@ if __name__ == '__main__':
     parser.add_argument('--legs',     type=int,   default=4,     help='Number of legs')
     parser.add_argument('--loop',     action='store_true',       help='Repeat pattern indefinitely')
     parser.add_argument('--t_end',    type=float, default=None,  help='Plot duration (s); required with --loop')
+    parser.add_argument('--runway',   type=float, default=0.0,   help='North lead-in runway before lawnmower (m)')
     args = parser.parse_args()
 
     if args.loop and args.t_end is None:
         parser.error('--t_end is required when --loop is set')
 
     _plot(args.alt, args.airspeed, args.leg, args.radius, args.legs,
-          loop=args.loop, t_end=args.t_end)
+          loop=args.loop, t_end=args.t_end, runway_length=args.runway)

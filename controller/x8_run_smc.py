@@ -52,7 +52,7 @@ from x8_path_smc import PathSMC, PathSMCGains, SMCOutput
 from x8_mavlink import (
     connect, wait_for_state, set_mode,
     StateBuffer, MAVReceiver,
-    send_attitude_target, send_airspeed_command, send_altitude_command,
+    send_attitude_target,
     GUIDED_MODE, FBWA_MODE,
 )
 
@@ -81,8 +81,9 @@ _FIELDS = [
     'chi_err',
     'kappa', 'psi_r',
     's1', 's2', 's3',
-    'phi_cmd', 'v_cmd', 'z_cmd',
+    'phi_cmd', 'theta_cmd', 'T_cmd',
     'x_r', 'y_r',
+    'gamma',
 ]
 
 
@@ -92,10 +93,10 @@ class SMCLogger:
         self._prefix = prefix
         self._t0     = time.monotonic()
 
-    def record(self, state, out: SMCOutput, elapsed: float):
+    def record(self, state, out: SMCOutput, elapsed: float, x: float, y: float):
         self._rows.append([
             elapsed,
-            state.x,  state.y,  state.z,
+            x,        y,        state.z,
             state.vx, state.vy, state.vz,
             state.phi, state.theta, state.psi,
             state.p,   state.q,    state.r,
@@ -104,8 +105,9 @@ class SMCLogger:
             out.chi_err,
             out.kappa, out.psi_r,
             out.s1, out.s2, out.s3,
-            out.phi_cmd, out.v_cmd, out.z_cmd,
+            out.phi_cmd, out.theta_cmd, out.T_cmd,
             out.x_r, out.y_r,
+            out.gamma,
         ])
 
     def save(self):
@@ -153,12 +155,12 @@ def parse_args():
                    help='Number of legs')
     p.add_argument('--airspeed',  type=float, default=17.0,
                    help='Desired cruise airspeed (m/s)')
+    p.add_argument('--runway',    type=float, default=200.0,
+                   help='North lead-in runway before lawnmower grid (m); 0 to disable')
     # Runner
     p.add_argument('--max-time',  type=float, default=600.0,
                    help='Mission time limit (s); 0 = no limit')
     p.add_argument('--log',       default='sitl_smc')
-    p.add_argument('--no-alt',    action='store_true',
-                   help='Skip altitude commands (let ArduPilot hold current alt)')
     p.add_argument('--verbose',   action='store_true')
     return p.parse_args()
 
@@ -208,13 +210,14 @@ def main():
     # Initialise trajectory + SMC
     # ------------------------------------------------------------------
     traj = LawnmowerTrajectory(
-        altitude    = args.alt,
-        airspeed    = args.airspeed,
-        leg_length  = args.leg,
-        turn_radius = args.radius,
-        num_legs    = args.legs,
+        altitude      = args.alt,
+        airspeed      = args.airspeed,
+        leg_length    = args.leg,
+        turn_radius   = args.radius,
+        num_legs      = args.legs,
+        runway_length = args.runway,
     )
-    gains = PathSMCGains(v_d=args.airspeed)
+    gains = PathSMCGains()
     smc   = PathSMC(traj, gains)
 
     print(f"[TRAJ] Total trajectory time: {traj.total_time:.1f} s  "
@@ -258,21 +261,20 @@ def main():
                 print(f"\n[STOP] Max time {args.max_time:.0f} s reached.")
                 break
 
-            # Arc-length projection: keep virtual particle at nearest point on path
-            t_ref = traj.nearest_t(state.x - x0, state.y - y0)
-
             # --- Trajectory complete? ---
-            ref = traj.query(t_ref)
+            ref = traj.query(elapsed)
             if ref.segment == 'done':
                 print("\n[DONE] Trajectory complete.")
                 break
 
             # --- SMC update ---
+            x_rel = state.x - x0
+            y_rel = state.y - y0
             out = smc.update(
-                x=state.x - x0, y=state.y - y0, z=state.z,
+                x=x_rel, y=y_rel, z=state.z,
                 vx=state.vx, vy=state.vy, vz=state.vz,
                 phi=state.phi,
-                t=t_ref,
+                t=elapsed,
             )
 
             # --- Abort check ---
@@ -285,14 +287,13 @@ def main():
             # --- Send commands ---
             send_attitude_target(conn,
                                  roll_d=out.phi_cmd,
-                                 pitch_d=0.0,
-                                 yaw_d=state.psi)
-            send_airspeed_command(conn, out.v_cmd)
-            if not args.no_alt:
-                send_altitude_command(conn, out.z_cmd)
+                                 pitch_d=out.theta_cmd,
+                                 yaw_d=state.psi,
+                                 thrust=out.T_cmd,
+                                 type_mask=0b00000111)
 
             # --- Log ---
-            logger.record(state, out, elapsed)
+            logger.record(state, out, elapsed, x=x_rel, y=y_rel)
 
             # --- Console (1 Hz) ---
             if tick % int(args.hz) == 0:
@@ -302,9 +303,9 @@ def main():
                     f"e_t={out.e_t:+6.2f}m  "
                     f"e_z={out.e_z:+6.2f}m  "
                     f"s1={out.s1:+5.2f}  "
-                    f"φ_cmd={math.degrees(out.phi_cmd):+6.1f}°  "
-                    f"V_cmd={out.v_cmd:5.1f}m/s  "
-                    f"[{ref.segment}]"
+                    f"φ={math.degrees(out.phi_cmd):+6.1f}°  "
+                    f"θ={math.degrees(out.theta_cmd):+5.1f}°  "
+                    f"T={out.T_cmd:.2f}  [{ref.segment}]"
                 )
 
             tick += 1

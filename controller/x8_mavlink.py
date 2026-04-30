@@ -214,10 +214,14 @@ def send_attitude_target(conn,
                          roll_rate_d:  float = 0.0,
                          pitch_rate_d: float = 0.0,
                          yaw_rate_d:   float = 0.0,
-                         thrust:       float = 0.6):
+                         thrust:       float = 0.6,
+                         type_mask:    int   = 0b00000000):
     """
     Send SET_ATTITUDE_TARGET.
-    ArduPlane uses the quaternion for attitude hold; rates are feedforward.
+
+    type_mask bits (set=ignore):
+        0b00000111 — ignore body rates, use attitude quaternion + thrust
+        0b00000000 — use attitude + rates + thrust (default)
     """
     cy, sy = math.cos(yaw_d   / 2), math.sin(yaw_d   / 2)
     cp, sp = math.cos(pitch_d / 2), math.sin(pitch_d / 2)
@@ -232,7 +236,7 @@ def send_attitude_target(conn,
         int(time.monotonic() * 1000) & 0xFFFFFFFF,
         conn.target_system,
         conn.target_component,
-        0b00000000,
+        type_mask,
         q,
         roll_rate_d, pitch_rate_d, yaw_rate_d,
         thrust,
