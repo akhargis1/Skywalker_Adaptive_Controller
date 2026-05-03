@@ -53,9 +53,9 @@ def plot_all(data, fields, title: str = '', save: bool = False, out_path: str = 
     theta     = np.degrees(col(data, fields, 'theta'))
     phi_d     = np.degrees(col(data, fields, 'phi_d'))
     theta_d   = np.degrees(col(data, fields, 'theta_d'))
-    s1        = np.degrees(col(data, fields, 's0'))
-    s2        = np.degrees(col(data, fields, 's1'))
-    s3        = np.degrees(col(data, fields, 's2'))
+    s0        = np.degrees(col(data, fields, 's0'))
+    s1        = np.degrees(col(data, fields, 's1'))
+    s2        = np.degrees(col(data, fields, 's2'))
     s_norm    = np.sqrt(s0**2 + s1**2 + s2**2)
     delta_L   = np.degrees(col(data, fields, 'delta_L'))
     delta_R   = np.degrees(col(data, fields, 'delta_R'))
@@ -126,8 +126,8 @@ def plot_all(data, fields, title: str = '', save: bool = False, out_path: str = 
 
 def print_summary(data, fields):
     t       = col(data, fields, 't')
-    s1      = np.degrees(col(data, fields, 's0'))
-    s2      = np.degrees(col(data, fields, 's1'))
+    s0      = np.degrees(col(data, fields, 's0'))
+    s1      = np.degrees(col(data, fields, 's1'))
     e0      = np.degrees(col(data, fields, 'e0'))
     e1      = np.degrees(col(data, fields, 'e1'))
     delta_L = np.degrees(col(data, fields, 'delta_L'))
