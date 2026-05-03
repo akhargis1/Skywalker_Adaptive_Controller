@@ -126,8 +126,8 @@ def plot_all(data, fields, title: str = '', save: bool = False, out_path: str = 
 
 def print_summary(data, fields):
     t       = col(data, fields, 't')
-    s0      = np.degrees(col(data, fields, 's0'))
-    s1      = np.degrees(col(data, fields, 's1'))
+    s1      = np.degrees(col(data, fields, 's0'))
+    s2      = np.degrees(col(data, fields, 's1'))
     e0      = np.degrees(col(data, fields, 'e0'))
     e1      = np.degrees(col(data, fields, 'e1'))
     delta_L = np.degrees(col(data, fields, 'delta_L'))
